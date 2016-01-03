@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Alzheimer's Patient Call Manager</title>
+	<meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+
+<script src="https://www.parsecdn.com/js/parse-1.5.0.min.js"></script>
+<script src="moment.js"></script>
+<script src="https://cdn.firebase.com/js/client/2.3.2/firebase.js"></script>
+
+
+<style type="text/css">
+.even-match {
+	background: aqua;
+}
+
+.odd-match {
+	background: yellow;
+}
+</style>
+
+<script>
+
+var myFirebaseRef = new Firebase("https://lola-help.firebaseio.com/");
+
+myFirebaseRef.child("callEvents").on("value", function(snapshot) {
+  loadData();
+});
+
+
+var CallEvent = Parse.Object.extend("CallEvent");
+var PhoneBook = Parse.Object.extend("phoneBook");
+
+Parse.initialize("SQkRI6Z4R4bSIKau6PURCv9rzpddU8d1rKCsK7KZ", "jMORWQmSFJwQeLfY7legVqRzKpeJAW9qpyhr4dR1");
+
+function loadData()
+{
+	var callEvents = new Parse.Query(CallEvent);
+	callEvents.limit(1000);
+	callEvents.descending('createdAt');
+	var phoneBookQuery = new Parse.Query(PhoneBook);
+	phoneBookQuery.limit(1000);
+
+	Parse.Promise.when([callEvents.find(), phoneBookQuery.find()]).then(function(calls, phoneBookEntries) {
+		renderData(calls, phoneBookEntries);
+	}, function(error) {
+		console.error(error);
+	});
+}
+
+function loadPhoneBook()
+{
+	// var labSymptomQuery = new Parse.Query(LabSymptom);
+	// labSymptomQuery.limit(1000);
+	// labSymptomQuery.include('labs');
+	// labSymptomQuery.include('symptoms');
+	// labSymptomQuery.find().then(function(results) {
+	// 	renderMatches(results);
+	// }, function(queryError) {
+	// 	console.error(queryError);
+	// });
+}
+
+function renderData(calls, phoneBookEntries) {
+	$('#callRows').html('');
+	for (var i=0; i < calls.length; i++) {
+		var rowHTML = $('<div class="row">');
+		var nameHTML = $('<div class="col-lg-6">');
+		var timeHTML = $('<div class="col-lg-6">');
+		var call = calls[i];
+		var callEvent = call.get('metadata').eventDescription.callEvent;
+		console.log(callEvent);
+		if (callEvent != 'CalledNumber') {
+			continue;
+		};
+		var simpleEntry = findPhoneBookEntry(call, phoneBookEntries);
+		nameHTML.html(simpleEntry["name"] + '  (' + simpleEntry["number"] + ')');
+		var createdAt = call.createdAt;
+		momentCreation = moment(createdAt);
+		timeHTML.html(momentCreation.fromNow());
+		rowHTML.append(nameHTML);
+		rowHTML.append(timeHTML);
+		$('#callRows').append(rowHTML);
+	}
+
+	$('#phoneRows').html('');
+	for (var i = phoneBookEntries.length - 1; i >= 0; i--) {
+		var pbEntry = phoneBookEntries[i];
+		var rowHTML = $('<div class="row">');
+		var nameHTML = $('<div class="col-lg-6">');
+		var blockedHTML = $('<div class="col-lg-6">');
+		var blocked = pbEntry.get('blocked');
+		var blockedChecked = (blocked) ? " checked " : "";
+		var name = pbEntry.get('name');
+		nameHTML.html(name);
+		blockedHTML.html('<div class="input-group"><span class="input-group-addon"><input type="checkbox" aria-label="Blocked" '+blockedChecked+'>Blocked</span></div><!-- /input-group -->');
+		rowHTML.append(nameHTML);
+		rowHTML.append(blockedHTML);
+		$('#phoneRows').append(rowHTML);
+	};
+
+	// $('#dataRows').html('');
+	// var maxLength = Math.max(labs.length, symptoms.length);
+	// for (var i=0; i < maxLength; i++) {
+	// 	var rowHTML = $('<div class="row">');
+	// 	var logHTML = $('<div class="col-lg-6">');
+	// 	var symptomHTML = $('<div class="col-lg-6">');
+	// 	if (i < labs.length) {
+	// 		logHTML.append(generateCheckbox(labs[i], "lab"));
+	// 	};
+	// 	rowHTML.append(logHTML);
+	// 	if (i < symptoms.length) {
+	// 		symptomHTML.append(generateCheckbox(symptoms[i], "symptom"));
+	// 	};
+	// 	rowHTML.append(symptomHTML);
+	// 	$('#dataRows').append(rowHTML);
+	// }
+}
+
+function findPhoneBookEntry(call, phoneBookEntries)
+{
+	var metadata = call.get('metadata');
+	console.log(metadata);
+	var phoneNumberSearch = metadata['callingParticipant'];
+	console.log(phoneNumberSearch);
+	var result = {
+		"name" : "Unknown Caller",
+		"number" : phoneNumberSearch
+	};
+	for (var i = phoneBookEntries.length - 1; i >= 0; i--) {
+		var pbEntry = phoneBookEntries[i];
+		var phoneNumber = pbEntry.get('phoneNumber');
+		var name = pbEntry.get('name');
+		if (phoneNumber == phoneNumberSearch) {
+			result = {
+				"name" : name,
+				"number" : phoneNumberSearch
+			}
+		};
+	};
+	var fixNumber = result.number.replace('@foundry.att.net','');
+	fixNumber = fixNumber.replace('sip:+','');
+	result.number = fixNumber;
+	return result;
+}
+
+function generateCheckbox(dataItem, name) {
+	var divObject = $('<div class="input-group">');
+	var spanObject = $('<span class="input-group-addon">');
+	var inputObject = $('<input type="checkbox" aria-label="...">');
+	inputObject.attr('objectId', dataItem.id);
+	inputObject.attr('name', name + "[]");
+
+	var inputText = $('<input type="text" class="form-control" aria-label="...">');
+
+	inputText.attr('disabled', true);
+	inputText.attr('value', dataItem.get('description'));
+
+	spanObject.append(inputObject);
+	divObject.append(spanObject);
+	divObject.append(inputText);
+
+ //    <div class="input-group">
+ //      <span class="input-group-addon">
+ //        <input type="checkbox" aria-label="...">
+ //      </span>
+ //      <input type="text" class="form-control" aria-label="...">
+ //    </div><!-- /input-group -->
+
+ 	return divObject;
+}
+
+$(function() {
+	$('#addPBEntry').click(function(e) {
+		var newName = $('#newName').val();
+		var newPhone = $('#newPhone').val();
+		if (newName == null || newName.length == 0) {
+			alert('you need to enter a name to continue');
+			$('#newName').focus();
+		} else if (newPhone == null || newPhone.length == 0) {
+			alert('you need to enter a phone to continue');
+			$('#newPhone').focus();
+		} else {
+			var isBlocked = $('#newBlocked').prop('checked');
+			var phoneBook = new PhoneBook();
+			phoneBook.set('name', newName);
+			phoneBook.set('phoneNumber', 'sip:+' + newPhone + '@foundry.att.net');
+			phoneBook.set('blocked', isBlocked);
+			phoneBook.save().then(function(result) {
+				loadData();
+				$('#newName').val('');
+				$('#newPhone').val('');
+				$('#newBlocked').prop('checked', false);
+			}, function(saveError) {
+				console.error(saveError);
+			});
+		}
+	});
+
+	$('#addSymptomButton').click(function(e) {
+		var symptomText = $('#newSymptomText').val();
+		if (symptomText == null || symptomText.length == 0) {
+			alert('you need to enter symptom text to continue');
+			$('#newSymptomText').focus();
+		} else {
+			var symptomObject = new Symptom();
+			symptomObject.set('description', symptomText);
+			symptomObject.save().then(function(result) {
+				loadData();
+			}, function(saveError) {
+				console.error(saveError);
+			})
+		}
+	});
+	loadData();
+
+	loadPhoneBook();
+});
+
+
+</script>
+
+</head>
+<body>
+
+    <div class="container">
+
+		<div class="starter-template">
+			<h1>Alzheimer's Patient Call Manager</h1>
+		</div>
+
+
+
+
+		<div class="row">
+			<div class="col-lg-12">
+				<p class="lead">
+					<h2>Phone History</h2>
+				</p>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-lg-6">
+				<h3>Name</h3>
+			</div>
+			<div class="col-lg-6">
+				<h3>Time</h3>
+			</div>
+		</div>
+
+		<div id="callRows">
+		</div>
+
+		<div class="row">
+			<div class="col-lg-12">
+				<br>
+				<hr>
+				<br>
+			</div>
+		</div>
+
+
+
+
+		<div class="row">
+			<div class="col-lg-12">
+				<p class="lead">
+					<h2>
+						Phone Book Entries
+					</h2>
+				</p>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-lg-6">
+				<h3>Name</h3>
+			</div>
+			<div class="col-lg-6">
+				<h3>Blocked</h3>
+			</div>
+		</div>
+
+		<div id="phoneRows">
+		</div>
+
+		
+		<div class="row">
+			<div class="col-lg-12">
+				<br>
+				<hr>
+				<br>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-lg-12">
+				<p class="lead">
+					<h2>
+						Add Phone Number to Phone Book
+					</h2>
+				</p>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-lg-3">
+				<div class="input-group">
+					<input type="text" class="form-control" placeholder="Name" id="newName">
+				</div>
+			</div><!-- /.col-lg-3 -->
+			<div class="col-lg-3">
+				<div class="input-group">
+					<input type="text" class="form-control" placeholder="Phone" id="newPhone">
+				</div>
+			</div><!-- /.col-lg-3 -->
+			<div class="col-lg-3">
+				<div class="input-group">
+					<span class="input-group-addon">
+						<input type="checkbox" aria-label="Blocked" id="newBlocked">Blocked
+					</span>
+				</div><!-- /input-group -->
+			</div><!-- /.col-lg-3 -->
+			<div class="col-lg-3">
+				<button class="btn btn-default" type="button" id="addPBEntry">Add Phone Book Entry</button>
+			</div><!-- /.col-lg-3 -->
+		</div><!-- /.row -->
+    </div><!-- /.container -->
+
+
+
+</body>
+</html>
