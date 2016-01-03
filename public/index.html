@@ -84,7 +84,6 @@ function renderData(calls, phoneBookEntries) {
 		var timeHTML = $('<div class="col-lg-6">');
 		var call = calls[i];
 		var callEvent = call.get('metadata').eventDescription.callEvent;
-		console.log(callEvent);
 		if (callEvent != 'CalledNumber') {
 			continue;
 		};
@@ -108,10 +107,26 @@ function renderData(calls, phoneBookEntries) {
 		var blockedChecked = (blocked) ? " checked " : "";
 		var name = pbEntry.get('name');
 		nameHTML.html(name);
-		blockedHTML.html('<div class="input-group"><span class="input-group-addon"><input type="checkbox" aria-label="Blocked" '+blockedChecked+'>Blocked</span></div><!-- /input-group -->');
+		var blockedID = pbEntry.toJSON().objectId
+		blockedHTML.html('<div class="input-group"><span class="input-group-addon"><input type="checkbox" id="'+blockedID+'" aria-label="Blocked" '+blockedChecked+'>Blocked</span></div><!-- /input-group -->');
 		rowHTML.append(nameHTML);
 		rowHTML.append(blockedHTML);
 		$('#phoneRows').append(rowHTML);
+		$('#'+blockedID).click(function() {
+		    var $this = $(this);
+		    // $this will contain a reference to the checkbox   
+		    var blocked = $this.is(':checked');
+		    var updatePB = new PhoneBook();
+		    console.log(blockedID);
+		    updatePB.set('objectId',blockedID);
+		    updatePB.set('blocked', blocked);
+		    updatePB.save().then(function(success) {
+		    	loadData();
+		    }, function(error) {
+
+		    });
+		});
+
 	};
 
 	// $('#dataRows').html('');
@@ -135,9 +150,7 @@ function renderData(calls, phoneBookEntries) {
 function findPhoneBookEntry(call, phoneBookEntries)
 {
 	var metadata = call.get('metadata');
-	console.log(metadata);
 	var phoneNumberSearch = metadata['callingParticipant'];
-	console.log(phoneNumberSearch);
 	var result = {
 		"name" : "Unknown Caller",
 		"number" : phoneNumberSearch
@@ -212,21 +225,17 @@ $(function() {
 		}
 	});
 
-	$('#addSymptomButton').click(function(e) {
-		var symptomText = $('#newSymptomText').val();
-		if (symptomText == null || symptomText.length == 0) {
-			alert('you need to enter symptom text to continue');
-			$('#newSymptomText').focus();
-		} else {
-			var symptomObject = new Symptom();
-			symptomObject.set('description', symptomText);
-			symptomObject.save().then(function(result) {
-				loadData();
-			}, function(saveError) {
-				console.error(saveError);
-			})
-		}
+	
+	$('#myform:checkbox').click(function() {
+	    var $this = $(this);
+	    // $this will contain a reference to the checkbox   
+	    if ($this.is(':checked')) {
+	        // the checkbox was checked 
+	    } else {
+	        // the checkbox was unchecked
+	    }
 	});
+
 	loadData();
 
 	loadPhoneBook();
