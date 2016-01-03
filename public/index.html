@@ -88,7 +88,8 @@ function renderData(calls, phoneBookEntries) {
 			continue;
 		};
 		var simpleEntry = findPhoneBookEntry(call, phoneBookEntries);
-		nameHTML.html(simpleEntry["name"] + '  (' + simpleEntry["number"] + ')');
+		var blockedText = (simpleEntry["blocked"]) ? "BLOCKED" : "";
+		nameHTML.html(blockedText + ' ' + simpleEntry["name"] + '  (' + simpleEntry["number"] + ')');
 		var createdAt = call.createdAt;
 		momentCreation = moment(createdAt);
 		timeHTML.html(momentCreation.fromNow());
@@ -112,20 +113,7 @@ function renderData(calls, phoneBookEntries) {
 		rowHTML.append(nameHTML);
 		rowHTML.append(blockedHTML);
 		$('#phoneRows').append(rowHTML);
-		$('#'+blockedID).click(function() {
-		    var $this = $(this);
-		    // $this will contain a reference to the checkbox   
-		    var blocked = $this.is(':checked');
-		    var updatePB = new PhoneBook();
-		    console.log(blockedID);
-		    updatePB.set('objectId',blockedID);
-		    updatePB.set('blocked', blocked);
-		    updatePB.save().then(function(success) {
-		    	loadData();
-		    }, function(error) {
-
-		    });
-		});
+		addClickForBlockedID(blockedID);
 
 	};
 
@@ -147,22 +135,44 @@ function renderData(calls, phoneBookEntries) {
 	// }
 }
 
+function addClickForBlockedID(blockedID)
+{
+	$('#'+blockedID).click(function() {
+		    var $this = $(this);
+		    // $this will contain a reference to the checkbox   
+		    var blocked = $this.is(':checked');
+		    var updatePB = new PhoneBook();
+		    console.log(blockedID);
+		    updatePB.set('objectId',blockedID);
+		    updatePB.set('blocked', blocked);
+		    updatePB.save().then(function(success) {
+		    	loadData();
+		    }, function(error) {
+
+		    });
+		});
+}
+
 function findPhoneBookEntry(call, phoneBookEntries)
 {
 	var metadata = call.get('metadata');
 	var phoneNumberSearch = metadata['callingParticipant'];
+	var callBlocked = call.get('blocked');
 	var result = {
 		"name" : "Unknown Caller",
-		"number" : phoneNumberSearch
+		"number" : phoneNumberSearch,
+		"blocked" : callBlocked
 	};
 	for (var i = phoneBookEntries.length - 1; i >= 0; i--) {
 		var pbEntry = phoneBookEntries[i];
 		var phoneNumber = pbEntry.get('phoneNumber');
 		var name = pbEntry.get('name');
+		var blocked = pbEntry.get('blocked');
 		if (phoneNumber == phoneNumberSearch) {
 			result = {
 				"name" : name,
-				"number" : phoneNumberSearch
+				"number" : phoneNumberSearch,
+				"blocked" : callBlocked
 			}
 		};
 	};

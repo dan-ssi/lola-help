@@ -65,10 +65,19 @@ app.post('/callEvent', function(req, res) {
 		testNumber.equalTo('blocked', true);
 		testNumber.find().then(function(results) {
 			if (results.length > 0) {
-				res.send({ "action": {
+				success.set('blocked', true);
+				success.save().then(function(result) {
+					res.send({ "action": {
 						    "actionToPerform": "EndCall"
 							}
 					});
+				}, function(error) {
+					res.send({ "action": {
+						    "actionToPerform": "EndCall"
+							}
+					});
+				});
+				
 			} else {
 				res.send({});
 			}
