@@ -1,7 +1,7 @@
 ##Alzheimer's Patient Call Manager
 
 ####Project Summary
-A very simple application that allows Alzheimer's Patients Phone calls to be monitored using ALU's Phone Management API's.
+A very simple application that allows Alzheimer's Patients Phone calls to be monitored using ALU's Phone Management API's. This application was built for the 2016 AT&T Dev Summit Hackathon.
 
 #####Getting it working
 1.	Deploy this code on Parse, update project keys to match account
