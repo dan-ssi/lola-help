@@ -65,6 +65,7 @@ app.post('/callEvent', function(req, res) {
 		testNumber.equalTo('blocked', true);
 		testNumber.find().then(function(results) {
 			if (results.length > 0) {
+				// The number should be blocked by our app
 				success.set('blocked', true);
 				success.save().then(function(result) {
 					res.send({ "action": {
@@ -79,7 +80,33 @@ app.post('/callEvent', function(req, res) {
 				});
 				
 			} else {
-				res.send({});
+				// test the number against white pages
+				var testPhone = caller.replace('@foundry.att.net','');
+				testPhone = testPhone.replace('sip:+','');
+				Parse.Cloud.httpRequest({
+				  method: 'GET',
+				  url: 'https://proapi.whitepages.com/2.1/phone.json?api_key=842b93fe3fbbfdeb27fcc2e3d515a1cd&phone_number='+testPhone
+				}).then(function(httpResponse) {
+					success.set('whitepagesResponse', httpResponse.data);
+					var level = httpResponse.data.results[0].reputation.level;
+					var shouldBlock = level > 2;
+					success.set('blocked', shouldBlock);
+					success.save().then(function(result) {
+					if (shouldBlock) {
+						res.send({ "action": {
+								    "actionToPerform": "EndCall"
+								}
+						});
+					} else {
+						res.send({});
+					}
+					})
+					console.log(httpResponse.text);
+					
+				}, function(httpResponse) {
+				  console.error('Whitepages Request failed with response code ' + httpResponse.status);
+				  res.send({});
+				});
 			}
 		}, function(Error) {
 			res.send({});
@@ -89,6 +116,10 @@ app.post('/callEvent', function(req, res) {
 		res.send({});
 	});
 });
+
+
+
+// https://proapi.whitepages.com/2.1/phone.json?api_key=842b93fe3fbbfdeb27fcc2e3d515a1cd&phone_number=9991113230
 
 // // Example reading from the request query string of an HTTP get request.
 // app.get('/test', function(req, res) {

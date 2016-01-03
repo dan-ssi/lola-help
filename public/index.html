@@ -89,6 +89,9 @@ function renderData(calls, phoneBookEntries) {
 		};
 		var simpleEntry = findPhoneBookEntry(call, phoneBookEntries);
 		var blockedText = (simpleEntry["blocked"]) ? "BLOCKED" : "";
+		if (simpleEntry.spamScore > 2) {
+			blockedText += ' SPAM';
+		};
 		nameHTML.html(blockedText + ' ' + simpleEntry["name"] + '  (' + simpleEntry["number"] + ')');
 		var createdAt = call.createdAt;
 		momentCreation = moment(createdAt);
@@ -158,21 +161,30 @@ function findPhoneBookEntry(call, phoneBookEntries)
 	var metadata = call.get('metadata');
 	var phoneNumberSearch = metadata['callingParticipant'];
 	var callBlocked = call.get('blocked');
+	var whitepagesData = call.get('whitepagesResponse');
+	var spamScore = 1;
+	if (whitepagesData) {
+		spamScore = whitepagesData.results[0].reputation.level;
+	};
 	var result = {
 		"name" : "Unknown Caller",
 		"number" : phoneNumberSearch,
-		"blocked" : callBlocked
+		"blocked" : callBlocked,
+		"spamScore" : spamScore
 	};
 	for (var i = phoneBookEntries.length - 1; i >= 0; i--) {
 		var pbEntry = phoneBookEntries[i];
 		var phoneNumber = pbEntry.get('phoneNumber');
 		var name = pbEntry.get('name');
 		var blocked = pbEntry.get('blocked');
+		
+		
 		if (phoneNumber == phoneNumberSearch) {
 			result = {
 				"name" : name,
 				"number" : phoneNumberSearch,
-				"blocked" : callBlocked
+				"blocked" : callBlocked,
+				"spamScore" : spamScore
 			}
 		};
 	};
